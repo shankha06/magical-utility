@@ -1,2 +1,10 @@
 # magical-utility
-Code repositories for utilities which can be resused to simplify downstream processes
+
+![N|Solid](https://clipperofficial.com/common/project/images/reusability-top@3x.jpg)
+This code repositories is created to be used as functional utlities to magically shorten the time to automate the downstream processes via code reusability. 
+
+## Features in this repo
+- use rich to interact with pandas dataframe
+- dynamic progress bar with rich
+
+
