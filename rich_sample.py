@@ -11,7 +11,10 @@ from time import sleep
 def process_data():
     sleep(0.02)
 
-def console_process(data, console):
+def console_process(
+    data: list, 
+    console: Console,
+    ) -> None:
     while data:
         num = data.pop(0)
         sleep(1)
