@@ -41,7 +41,7 @@ if __name__ == "__main__":
     df = pd.DataFrame(sample_data)
 
     # Inspect element or fucntion or library
-    print(inspect(df))
+    print(inspect(df, methods=True))
 
     # Progress bar from Loop
     for _ in track(range(100), description='[magenta]custom text'):
