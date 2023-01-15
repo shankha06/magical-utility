@@ -15,6 +15,12 @@ def console_process(
     data: list, 
     console: Console,
     ) -> None:
+    """_summary_
+
+    Args:
+        data (list): _description_
+        console (Console): _description_
+    """
     while data:
         num = data.pop(0)
         sleep(1)
@@ -41,7 +47,8 @@ if __name__ == "__main__":
     df = pd.DataFrame(sample_data)
 
     # Inspect element or fucntion or library
-    print(inspect(df, methods=True))
+    # print(inspect(process_data, docs=True, all=True))
+    print(inspect(inspect))
 
     # Progress bar from Loop
     for _ in track(range(100), description='[magenta]custom text'):
