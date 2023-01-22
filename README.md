@@ -7,5 +7,7 @@ This code repositories is created to be used as functional utlities to magically
 - rich print samples
 - use rich to interact with pandas dataframe
 - dynamic progress bar with rich
+- zip a folder and all its contents
+- search and download images from unsplash
 
 
