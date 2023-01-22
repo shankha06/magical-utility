@@ -63,8 +63,8 @@ if __name__ == "__main__":
 
     # Progress bar with variable progress at each step
     with Progress() as progress:
-        task1 = progress.add_task("[red]what you eant to write ...", total=100)
-        task3 = progress.add_task("[cyan]custom ...", total=100)
+        task1 = progress.add_task("[red]what you want to write ...", total=100)
+        task3 = progress.add_task("[cyan]custom progress bar ...", total=100)
 
         while not progress.finished:
             progress.update(task1, advance=0.9)
