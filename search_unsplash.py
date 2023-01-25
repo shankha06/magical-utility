@@ -1,4 +1,3 @@
-#! python3
 # search_unsplash.py - Opens the first 5 pictures found for a searched word in different tabs.
 
 import sys  # For alternative 2
