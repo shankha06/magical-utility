@@ -29,4 +29,4 @@ if type_interest:
 else:
    amount = fixed_deposit(recurring_deposit(principal, rate, premium), rate, years-premium)
 
-print(f"The maturity amount is {amount}")
+print(f"The maturity amount is {int(amount/100000)} lakhs")
