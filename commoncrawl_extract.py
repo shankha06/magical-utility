@@ -2,6 +2,7 @@ import io
 import gzip
 import requests
 from comcrawl.utils import make_multithreaded
+from comcrawl import IndexClient
 URL_TEMPLATE = "https://data.commoncrawl.org/{filename}"
 
 def download_single_result(result):
@@ -88,23 +89,25 @@ def download_multiple_results(results, threads = 8):
 
     return results_with_html
 
-client = IndexClient(["2023-23", "2023-14","2023-06","2022-49","2022-40", "2022-33", "2022-27", "2022-21", "2022-05", "2021-49", "2021-43", "2021-39", "2021-31", "2021-25", "2021-21", "2021-17", "2021-10", "2021-04"], verbose = False)
-client.search("covanta.com/*", threads=10)
-if len(client.results) > 0:
-    first_page_html = client.results[0]["url"]
-    print(first_page_html)
-    client.results = (pd.DataFrame(client.results)
-                      .sort_values(by="timestamp")
-                      .drop_duplicates("urlkey", keep="last")
-                      .to_dict("records"))
-    
-    result = pd.DataFrame(client.results)
-    print(result.columns.tolist())
-    result = result[(result["status"]=="200") & (result["mime"]=="text/html") & (result["languages"]=="eng") & (result["encoding"]=="UTF-8")]
-    print(f"Total Searched pages in Common Crawl resulted for the domain : {result.shape[0]} pages")
+if __name__ == "__main__": 
 
-result["url_metadata"] = result.apply(lambda row: meta_information_pandas(row), axis = 1)
-content_detailed = result[(result["url_metadata"]!="")]
-content_detailed = download_multiple_results(content_detailed.to_dict('records'))
-content_detailed = pd.DataFrame(content_detailed)
-print(f"Result is filtered to contain only relevant pages: {content_detailed.shape[0]} pages")
+    client = IndexClient(["2023-23", "2023-14","2023-06","2022-49","2022-40", "2022-33", "2022-27", "2022-21", "2022-05", "2021-49", "2021-43", "2021-39", "2021-31", "2021-25", "2021-21", "2021-17", "2021-10", "2021-04"], verbose = False)
+    client.search("covanta.com/*", threads=10)
+    if len(client.results) > 0:
+        first_page_html = client.results[0]["url"]
+        print(first_page_html)
+        client.results = (pd.DataFrame(client.results)
+                        .sort_values(by="timestamp")
+                        .drop_duplicates("urlkey", keep="last")
+                        .to_dict("records"))
+        
+        result = pd.DataFrame(client.results)
+        print(result.columns.tolist())
+        result = result[(result["status"]=="200") & (result["mime"]=="text/html") & (result["languages"]=="eng") & (result["encoding"]=="UTF-8")]
+        print(f"Total Searched pages in Common Crawl resulted for the domain : {result.shape[0]} pages")
+
+    result["url_metadata"] = result.apply(lambda row: meta_information_pandas(row), axis = 1)
+    content_detailed = result[(result["url_metadata"]!="")]
+    content_detailed = download_multiple_results(content_detailed.to_dict('records'))
+    content_detailed = pd.DataFrame(content_detailed)
+    print(f"Result is filtered to contain only relevant pages: {content_detailed.shape[0]} pages")
