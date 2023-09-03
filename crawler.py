@@ -1,4 +1,8 @@
+
+import time  
 import requests  
+from urllib.parse import urlparse, urljoin  
+from urllib.robotparser import RobotFileParser 
 from bs4 import BeautifulSoup  
 import re  
   
@@ -107,8 +111,6 @@ def ask_chatgpt_api(prompt:str, assumed_role: str = None) -> str:
     output = response["choices"][0]["message"]["content"].strip()    
     return output 
   
-import re  
-  
 def is_scraping_allowed_termsnconditions(url: str) -> bool:  
     """
     Checks if web scraping is allowed by the website's terms and conditions.  
@@ -139,10 +141,6 @@ def is_scraping_allowed_termsnconditions(url: str) -> bool:
         print("Terms of Use URL not found.")  
     return True     
 
-import time  
-import requests  
-from urllib.parse import urlparse, urljoin  
-from urllib.robotparser import RobotFileParser  
 
 def meta_information(url):
     """
