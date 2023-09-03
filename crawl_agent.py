@@ -1,98 +1,110 @@
-import tkinter as tk
+import io
+import gzip
 import requests
-from bs4 import BeautifulSoup
+from comcrawl.utils import make_multithreaded
+URL_TEMPLATE = "https://data.commoncrawl.org/{filename}"
 
-# Create the main window
-root = tk.Tk()
-root.title("Tkinter Web Scraper App")
+def download_single_result(result):
+    """Downloads HTML for single search result.
+    Args:
+        result: Common Crawl Index search result from the search function.
+    Returns:
+        The provided result, extendey by the corresponding HTML String.
 
-import re
-import re
+    """
+    offset, length = int(result["offset"]), int(result["length"])
 
-def split_text_by_date(text):
-  # Define a regular expression pattern for date like "Aug 14, 2023, 11:12 PM IST"
-  date_pattern = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4},\s+\d{1,2}:\d{2}\s+(?:AM|PM)\s+IST"
-  # Find all the matches of the date pattern in the text
-  dates = re.findall(date_pattern, text)
-  # Split the text by the date pattern
-  texts = re.split(date_pattern, text)
-  # Return a list of tuples of (date, text) pairs
-  return ".\n".join(texts)
+    offset_end = offset + length - 1
 
-# Define the function to scrape a website and show the headlines and content
-def scrape_website():
-    # Get the url from the entry widget
-    url = "https://economictimes.indiatimes.com/news/economy"
+    url = URL_TEMPLATE.format(filename=result["filename"])
+    response = (requests
+                .get(
+                    url,
+                    headers={"Range": f"bytes={offset}-{offset_end}"}
+                ))
 
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+    zipped_file = io.BytesIO(response.content)
+    # print(response.content)
+    unzipped_file = gzip.GzipFile(fileobj=zipped_file)
 
-    # Define an accept string to indicate the media types that are acceptable for the response
-    accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+    raw_data: bytes = unzipped_file.read()
+    try:
+        data: str = raw_data.decode("utf-8")
+    except UnicodeDecodeError:
+        print(f"Warning: Could not extract file downloaded from {url}")
+        data = ""
 
-    # Define a language string to indicate the preferred language for the response
-    language = "en-US,en;q=0.9"
+    if len(data) > 0:
+        data_parts = data.strip().split("\r\n\r\n", 2)
+        html_content = data_parts[2] if len(data_parts) == 3 else ""
+        soup = BeautifulSoup(html_content, 'html.parser')  
+        # Remove script and style elements  
+        for element in soup(['script', 'style']):  
+            element.decompose()  
 
-    # Define a connection string to indicate whether to keep the connection alive or not
-    connection = "keep-alive"
+        # Get text from the page  
+        text = soup.get_text()  
 
-    # Define a header dictionary with the keys and values for user agent, accept, language, connection
-    headers = {"User-Agent": user_agent, "Accept": accept, "Accept-Language": language, "Connection": connection}
-    # Make a request to the url and get the response
-    response = requests.get(url, headers=headers, allow_redirects=True, timeout=10)
+        # Remove leading and trailing spaces on each line  
+        lines = (line.strip() for line in text.splitlines())  
 
-    # Parse the response content using BeautifulSoup
-    soup = BeautifulSoup(response.content, "html.parser")
+        # Combine the lines into a single string  
+        html_content = '\n'.join(line for line in lines if line)  
+        result["html_parsed"] = html_content
+        title = soup.title.text
+        parsed_url = urlparse(result["url"])
+        if parsed_url.path == "/":
+            title = f"Home Page of the company | {title}"
+        try:
+            meta_desc = soup.find('meta', attrs={'name': 'description'})['content']
+            result["url_metadata"] = f"{title}. {meta_desc}"
+        except TypeError:
+            result["url_metadata"] = title
+    return result
+def download_multiple_results(results, threads = 8):
+    """Downloads search results.
 
-    # Find all the headlines (h1-h6) tags in the soup
-    headlines = soup.find_all(["h1", "h2", "h3"])
+    For each Common Crawl search result in the given list the
+    corresponding HTML page is downloaded.
+    Args:
+        results: List of Common Crawl search results.
+        threads: Number of threads to use for faster parallel downloads on
+            multiple threads.
+    Returns:
+        The provided results list, extended by the corresponding
+        HTML strings.
 
-    # Create a list to store the headlines and content
-    data = []
+    """
+    results_with_html = []
+    if threads:
+        multithreaded_download = make_multithreaded(download_single_result,
+                                                    threads)
+        results_with_html = multithreaded_download(results)
 
-    # Loop through each headline
-    for headline in headlines:
-        # Get the headline text
-        headline_text = headline.get_text().strip()
+    else:
+        for result in results:
+            result_with_html = download_single_result(result)
+            results_with_html.append(result_with_html)
 
-        # Get the next sibling element of the headline, which is usually the content
-        content = headline.next_sibling
+    return results_with_html
 
-        # If the content is not None and is a tag (not a string)
-        if content and content.name:
-            # Get the content text
-            content_text = content.get_text().strip()
-        else:
-            # Otherwise, set the content text to an empty string
-            content_text = ""
-        content_text = split_text_by_date(content_text)
-        data.append((headline_text, content_text))
+client = IndexClient(["2023-23", "2023-14","2023-06","2022-49","2022-40", "2022-33", "2022-27", "2022-21", "2022-05", "2021-49", "2021-43", "2021-39", "2021-31", "2021-25", "2021-21", "2021-17", "2021-10", "2021-04"], verbose = False)
+client.search("covanta.com/*", threads=10)
+if len(client.results) > 0:
+    first_page_html = client.results[0]["url"]
+    print(first_page_html)
+    client.results = (pd.DataFrame(client.results)
+                      .sort_values(by="timestamp")
+                      .drop_duplicates("urlkey", keep="last")
+                      .to_dict("records"))
+    
+    result = pd.DataFrame(client.results)
+    print(result.columns.tolist())
+    result = result[(result["status"]=="200") & (result["mime"]=="text/html") & (result["languages"]=="eng") & (result["encoding"]=="UTF-8")]
+    print(f"Total Searched pages in Common Crawl resulted for the domain : {result.shape[0]} pages")
 
-    # Clear the text widget
-    text.delete("1.0", "end")
-
-    # Loop through each item in the data list
-    for item in data:
-        # Insert the headline text as bold and with a newline
-        text.insert("end", item[0] + "\n", "bold")
-
-        # Insert the content text as normal and with a bullet point and a newline
-        text.insert("end", "• " + item[1] + "\n", "normal")
-
-# Create a label to prompt for the url
-button = tk.Button(root, text="Read ET News", command=scrape_website)
-button.pack(padx=10, pady=10)
-# Create labels in frame2 and frame3 to show some text
-text = tk.Text(root, autoseparators=True)
-
-# Create a text widget to display the headlines and content
-text = tk.Text(root)
-
-# Create two tags for bold and normal fonts
-text.tag_configure("bold", font=("Arial", 12, "underline"))
-text.tag_configure("normal", font=("Arial", 12))
-
-# Pack the text widget
-text.pack(padx=10, pady=10, fill="both", expand=True)
-
-# Start the main loop
-root.mainloop()
+result["url_metadata"] = result.apply(lambda row: meta_information_pandas(row), axis = 1)
+content_detailed = result[(result["url_metadata"]!="")]
+content_detailed = download_multiple_results(content_detailed.to_dict('records'))
+content_detailed = pd.DataFrame(content_detailed)
+print(f"Result is filtered to contain only relevant pages: {content_detailed.shape[0]} pages")
