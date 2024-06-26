@@ -1,42 +1,33 @@
-def read_docx_to_ dataframe(filepath, max_tokens_per_row=5000):
-  """
-  Reads content from a docx file into a pandas dataframe,
-  with each row containing at most a specified number of tokens,
-  ensuring whole paragraphs are included in each row.
+from sql_metadata import Parser
 
-  Args:
-      filepath (str): Path to the docx file.
-      max_tokens_per_row (int, optional): Maximum number of tokens allowed per row. Defaults to 5000.
+def extract_tables_and_columns(sql_query):
+    parser = Parser(sql_query)
+    table_names = parser.tables
+    column_names = parser.columns
+    result_dict = {}
+    for table in table_names:
+      for col in column_names:
+        append =""
+        if len(col.split(".")) >1:
+          if col.split(".")[0] == table:
+            append = col.split(".")[1]
+        else:
+          append = col
+        if append != "":
+          if table in result_dict:
+            result_dict[table].append(append)
+          else:
+            result_dict[table] = [append]
+    return result_dict
 
-  Returns:
-      pd.DataFrame: Dataframe containing the content from the docx file.
-  """
+# Example usage:
+sql_query = "SELECT column1, column2 FROM table1 WHERE condition"
+result = extract_tables_and_columns(sql_query)
+print(result)
 
-  data = []
-  current_row = []
-  token_count = 0
-  doc = Document(filepath)
 
-  for paragraph in doc.paragraphs:
-    paragraph_tokens = paragraph.text.strip().split()
+# Example usage
+sql = "SELECT SUM(sales) AS total_sales, customer_name FROM customers c JOIN orders o ON c.id = o.customer_id;"
+tables_info = extract_tables_and_columns(sql)
 
-    # Check if the whole paragraph fits within the limit
-    if token_count + len(paragraph_tokens) <= max_tokens_per_row:
-      current_row.extend(paragraph_tokens)
-      token_count += len(paragraph_tokens)
-    else:
-      # Add the current row (if any)
-      if current_row:
-        data.append(" ".join(current_row))
-        current_row = []
-        token_count = 0
-
-      # Add the entire paragraph as a new row
-      data.append(" ".join(paragraph_tokens))
-
-  # Add the last row if it has content
-  if current_row:
-    data.append(" ".join(current_row))
-
-  df = pd.DataFrame(data, columns=["Content"])
-  return df
+print(tables_info)
