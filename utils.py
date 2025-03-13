@@ -20,6 +20,21 @@ class CustomCrawlerProcess(CrawlerProcess):
     def __init__(self, settings=None, install_root_handler=True):
         super().__init__(settings, install_root_handler)
         self.settings.set('DEFAULT_REQUEST_HEADERS', HEADERS, priority='cmdline')
+        self.scraped_data = []
+        
+    def crawl(self, *args, **kwargs):
+        df = super().crawl(*args, **kwargs)
+        return df
+
+    def spider_closed(self, spider, reason):
+        self.logger.info(f'Spider {spider.name} closed with reason: {reason}')
+        if hasattr(spider, 'scraped_data'):
+            self.scraped_data = spider.scraped_data
+        super().spider_closed(spider, reason)
+
+    def close(self):
+        df = pd.DataFrame(self.scraped_data)
+        return df
 
 MAX_LIMIT = 40  # Define the maximum number of URLs to scrape
 DEPTH_LIMIT = 2  # Define the maximum depth limit
@@ -112,11 +127,11 @@ class PatternCrawler(CrawlSpider):
         if reactor.running:
             reactor.stop()
 
-    def close(self, reason):
-        """Convert scraped data to DataFrame and save to CSV."""
-        df = pd.DataFrame(self.scraped_data)
-        df.to_csv('scraped_data.csv', index=False)  # Save DataFrame to CSV
-        self.logger.info('Scraped data saved to scraped_data.csv')
+    # def close(self, reason):
+    #     """Convert scraped data to DataFrame and return it."""
+    #     df = pd.DataFrame(self.scraped_data)
+    #     self.logger.info('Scraped data converted to DataFrame')
+    #     return df
 
 def main():
     patterns = ["about", "contact", "privacy", "terms", "news"]
@@ -130,6 +145,9 @@ def main():
     try:
         process.crawl(PatternCrawler, start_urls=urls, allowed_patterns=patterns, max_depth=depth)
         process.start()
+
+        df = process.close()  # Modify the scrapper call such that the dataframe is returned as output instead of being saved.
+        df.to_excel('scraped_data.xlsx')  # Save the scraped data to an Excel file
     except Exception as e:
         logging.error(f"An error occurred during crawling: {e}")
 
