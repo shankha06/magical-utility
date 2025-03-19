@@ -122,7 +122,7 @@ class PatternCrawler(CrawlSpider):
         body_text = soup.get_text(separator="\n", strip=True)
         self.total_scraped +=1
         start_url = self.get_domain(response.url)
-        if start_url:
+        if start_url and start_url in self.start_domains:
             self.scraped_counts[start_url] += 1
         # self.logger.info(f"Crawling URL: {response.url} at depth - {response.meta["depth"]}, domain count - {self.scraped_counts[start_url]}" )
         item = {"url": response.url, "title": title, "body": body_text}
@@ -164,8 +164,67 @@ def main():
     urls = [
         "https://www.advancionsciences.com",
         "https://www.abc-group.com",
-        # "https://www.ign.com",
-        "https://www.alibaba.com",
+        "https://www.rsmus.com/",  # RSM US LLP
+        "https://www.gt.com/",  # Grant Thornton LLP
+        "https://www.bakertilly.com/",  # Baker Tilly
+        "https://www.bdo.com/global", #BDO
+        "https://www.plante Moran.com/", #Plante Moran
+        "https://www.crowe.com/", #Crowe
+        "https://www.claconnect.com/", #CLA (CliftonLarsonAllen)
+        "https://www.forvis.com/", #Forvis
+        "https://www.armstrongworldindustries.com/", #Armstrong World Industries
+        "https://www.jeld-wen.com/", #Jeld-Wen
+        "https://www.sensata.com/", #Sensata Technologies
+        "https://www.aaon.com/", #AAON
+        "https://www.brinkman.com/", #Brinkman Construction
+        "https://www.schneiderresources.com/", #Schneider Resources
+        "https://www.heniff.com/", #Heniff Transportation Systems
+        "https://www.milliken.com/", #Milliken & Company
+        "https://www.penske.com/", #Penske Corporation
+        "https://www.crowncork.com/", #Crown Holdings, Inc.
+        "https://www.cbre.com/", #CBRE Group, Inc.
+        "https://www.jll.com/", #Jones Lang LaSalle Incorporated
+        "https://www.colliers.com/", #Colliers International
+        "https://www.cushmanwakefield.com/", #Cushman & Wakefield
+        "https://www.hubinternational.com/", #Hub International
+        "https://www.ajg.com/", #Arthur J. Gallagher & Co.
+        "https://www.marshmclennan.com/", #Marsh McLennan
+        "https://www.lockton.com/", #Lockton Companies
+        "https://www.assuredpartners.com/", #AssuredPartners
+        "https://www.acrisure.com/", #Acrisure
+        "https://www.ryan.com/", #Ryan, LLC
+        "https://www.alvarezandmarsal.com/", #Alvarez & Marsal
+        "https://www.protiviti.com/", #Protiviti
+        "https://www.fti consulting.com/", #FTI Consulting
+        "https://www.alixpartners.com/", #AlixPartners
+        "https://www.ghclongpoint.com/", #GHCLongPoint
+        "https://www.lincolninternational.com/", #Lincoln International
+        "https://www.airdri.com/", #Airdri
+        "https://www.atlasmachinery.com/", #Atlas Machinery
+        "https://www.bakerpetroleum.com/", #Baker Petroleum
+        "https://www.centuryprinting.com/", #Century Printing
+        "https://www.davisstandard.com/", #Davis-Standard
+        "https://www.eliteamc.com/", #Elite AMC Management
+        "https://www.fivestarchemicals.com/", #Five Star Chemicals
+        "https://www.gulfcoastfilters.com/", #Gulf Coast Filters
+        "https://www.hytrol.com/", #Hytrol Conveyor Company
+        "https://www.intercon1.com/", #Intercon 1
+        "https://www.keymarkcorp.com/", #Keymark Corporation
+        "https://www.lewiscontractors.com/", #Lewis Contractors
+        "https://www.mccormickdistilling.com/", #McCormick Distilling Company
+        "https://www.nationalgypsum.com/", #National Gypsum
+        "https://www.ocv.com/", #OCV Control Valves
+        "https://www.pattersonpump.com/", #Patterson Pump Company
+        "https://www.qualitydie.com/", #Quality Die Company
+        "https://www.reynoldsamerican.com/", #Reynolds American Inc.
+        "https://www.steelcase.com/", #Steelcase
+        "https://www.textron.com/", #Textron
+        "https://www.usg.com/", #USG Corporation
+        "https://www.valmont.com/", #Valmont Industries
+        "https://www.williamsbakery.com/", #Williams Bakery
+        "https://www.xerium.com/", #Xerium Technologies
+        "https://www.yorklabel.com/", #York Label
+        "https://www.zurn.com/", #Zurn Water Solutions
     ]  # List of URLs to crawl
     DEPTH = 2
 
@@ -177,7 +236,7 @@ def main():
             "LOG_LEVEL": "INFO",
             "USER_AGENT": ua.random,
             "COOKIES_ENABLED": False,
-            "ROBOTSTXT_OBEY": True,
+            "ROBOTSTXT_OBEY": False,
 
             "DEFAULT_REQUEST_HEADERS": HEADERS,
 
@@ -202,6 +261,22 @@ def main():
             "ROBOTSTXT_PARSER": "scrapy.robotstxt.PythonRobotParser",
             "ROBOTSTXT_USER_AGENT": ua.random,
             "HTTPCACHE_ALWAYS_STORE": True,
+            "FAKEUSERAGENT_PROVIDERS" : [
+                'scrapy_fake_useragent.providers.FakeUserAgentProvider',  # This is the first provider we'll try
+                'scrapy_fake_useragent.providers.FakerProvider',  # If FakeUserAgentProvider fails, we'll use faker to generate a user-agent string for us
+                'scrapy_fake_useragent.providers.FixedUserAgentProvider',  # Fall back to USER_AGENT value
+            ],
+            # "ROTATING_PROXY_LIST" : [
+            #     'proxy1.com:8000',
+            #     'proxy2.com:8031',
+            #     'proxy3.com:8032',
+            # ],
+            # "DOWNLOADER_MIDDLEWARES": {
+            #     # ...
+            #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+            #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+            #     # ...
+            # }
         }
     )
 
