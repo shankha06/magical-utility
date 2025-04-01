@@ -61,11 +61,12 @@ def extract_domain(url):
 class PatternCrawler(CrawlSpider):
     name = "pattern_crawler"
 
-    def __init__(self, start_urls, output_file, max_depth=1, *args, **kwargs):
+    def __init__(self, start_urls, output_file, allowed_patterns, max_depth=1, *args, **kwargs):
         super(PatternCrawler, self).__init__(*args, **kwargs)
         self.start_urls = start_urls
           # Track scraped count per start_url
         self.scraped_data = []
+        self.allowed_patterns = allowed_patterns
         self.start_domains = [self.get_domain(url) for url in start_urls]
         self.scraped_counts = {
             url: 0 for url in self.start_domains
@@ -75,7 +76,8 @@ class PatternCrawler(CrawlSpider):
         self.output_file = output_file
         self.total_scraped = 0
         self.depth = DEPTH_LIMIT
-        self.rules = (Rule(LinkExtractor(), callback="parse_item", follow=False, process_request="process_request"),)
+        self.rules = (Rule(LinkExtractor(allow_domains = self.start_domains, unique=True, restrict_xpaths=["//a"]), 
+                           callback="parse_item", follow=False, process_request="process_request"),)
         super(PatternCrawler, self)._compile_rules()
 
     def get_domain(self, url):
@@ -83,12 +85,12 @@ class PatternCrawler(CrawlSpider):
 
     def process_request(self, request, response):
         request_domain = self.get_domain(request.url)
-        if self.total_scraped >= MAX_LIMIT*0.75*len(self.start_domains):
-            try:
-                if reactor.running:
-                    reactor.stop()
-            except error.ReactorNotRunning:
-                pass
+        # if self.total_scraped >= MAX_LIMIT*0.75*len(self.start_domains):
+        #     try:
+        #         if reactor.running:
+        #             reactor.stop()
+        #     except error.ReactorNotRunning:
+        #         pass
 
         if request_domain not in self.start_domains: #check domain is in start domain list
             self.logger.info(
@@ -114,7 +116,7 @@ class PatternCrawler(CrawlSpider):
         title = response.css("title::text").get()
         body_html = response.css("body").get()
 
-        if title is None or body_html is None:
+        if body_html is None:
             self.logger.warning("Missing title or body in URL: %s", response.url)
             return
 
@@ -160,6 +162,7 @@ class PatternCrawler(CrawlSpider):
 
 
 def main():
+    patterns = ["about", "contact", "features", "products", "services", ]
     ua = UserAgent()
     urls = [
         "https://www.advancionsciences.com",
@@ -209,7 +212,6 @@ def main():
         "https://www.gulfcoastfilters.com/", #Gulf Coast Filters
         "https://www.hytrol.com/", #Hytrol Conveyor Company
         "https://www.intercon1.com/", #Intercon 1
-        "https://www.keymarkcorp.com/", #Keymark Corporation
         "https://www.lewiscontractors.com/", #Lewis Contractors
         "https://www.mccormickdistilling.com/", #McCormick Distilling Company
         "https://www.nationalgypsum.com/", #National Gypsum
@@ -222,7 +224,6 @@ def main():
         "https://www.usg.com/", #USG Corporation
         "https://www.valmont.com/", #Valmont Industries
         "https://www.williamsbakery.com/", #Williams Bakery
-        "https://www.xerium.com/", #Xerium Technologies
         "https://www.yorklabel.com/", #York Label
         "https://www.zurn.com/", #Zurn Water Solutions
     ]  # List of URLs to crawl
@@ -231,7 +232,7 @@ def main():
 
     process = CrawlerProcess(
         {
-            "DEPTH_LIMIT": DEPTH,
+            "DEPTH_LIMIT": 2,
             "DEPTH_PRIORITY": 10,
             "LOG_LEVEL": "INFO",
             "USER_AGENT": ua.random,
@@ -240,24 +241,24 @@ def main():
 
             "DEFAULT_REQUEST_HEADERS": HEADERS,
 
-            "CONCURRENT_REQUESTS": 100,
+            "CONCURRENT_REQUESTS": 300,
             "CONCURRENT_REQUESTS_PER_DOMAIN": 10,
             # "CONCURRENT_REQUESTS_PER_IP": 10,
-            "DOWNLOAD_DELAY": 2,
+            "DOWNLOAD_DELAY": 2.5,
             "DOWNLOAD_MAXSIZE": 3355443,
-            "DOWNLOAD_TIMEOUT": 60,  # Timeout for each download in seconds
+            "DOWNLOAD_TIMEOUT": 120,  # Timeout for each download in seconds
             "RETRY_ENABLED": False,
 
             "SCHEDULER_DISK_QUEUE": "scrapy.squeues.PickleFifoDiskQueue",
             "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
             "SCHEDULER_PRIORITY_QUEUE": "scrapy.pqueues.DownloaderAwarePriorityQueue",
             
-            "CLOSESPIDER_PAGECOUNT_NO_ITEM": 30,
-            "CLOSESPIDER_ITEMCOUNT": MAX_LIMIT*0.9*len(urls),
+            # "CLOSESPIDER_PAGECOUNT_NO_ITEM": 30,
+            # "CLOSESPIDER_ITEMCOUNT": MAX_LIMIT*0.9*len(urls),
             "REDIRECT_PRIORITY_ADJUST": -1,
             "RANDOMIZE_DOWNLOAD_DELAY": True,
             "MEMUSAGE_ENABLED": True,
-            "REACTOR_THREADPOOL_MAXSIZE": 100,
+            "REACTOR_THREADPOOL_MAXSIZE": 300,
             "ROBOTSTXT_PARSER": "scrapy.robotstxt.PythonRobotParser",
             "ROBOTSTXT_USER_AGENT": ua.random,
             "HTTPCACHE_ALWAYS_STORE": True,
@@ -266,17 +267,13 @@ def main():
                 'scrapy_fake_useragent.providers.FakerProvider',  # If FakeUserAgentProvider fails, we'll use faker to generate a user-agent string for us
                 'scrapy_fake_useragent.providers.FixedUserAgentProvider',  # Fall back to USER_AGENT value
             ],
-            # "ROTATING_PROXY_LIST" : [
-            #     'proxy1.com:8000',
-            #     'proxy2.com:8031',
-            #     'proxy3.com:8032',
-            # ],
-            # "DOWNLOADER_MIDDLEWARES": {
-            #     # ...
-            #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-            #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-            #     # ...
-            # }
+            # "DOWNLOAD_HANDLERS": {
+            #     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+            #     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+            # },
+            # "TWISTED_REACTOR" : "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
+            "PLAYWRIGHT_BROWSER_TYPE": "firefox",
+
         }
     )
 
@@ -288,6 +285,7 @@ def main():
                 start_urls=urls,
                 max_depth=DEPTH,
                 output_file=temp_location,
+                allowed_patterns = patterns,
             )
             process.start()
 

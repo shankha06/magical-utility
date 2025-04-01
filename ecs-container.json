@@ -1,0 +1,157 @@
+{
+    "family": "cb-scrape-framework",
+    "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+    "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+     {
+        "name": "splitter",
+        "image": "cb-scrape-framework-docker-image",
+        "cpu": 512,
+        "memory": 1024,
+        "portMappings": [],
+        "essential": true,
+        "environment": [
+            {
+                "name": "INPUT_FILE_LOCATION",
+                "value": "aws://s3.amazonaws.com/your-batches-s3-bucket/path-to-file"
+            },
+            {
+                "name": "OUTPUT_FILE_LOCATION",
+                "value": "/app/data/input"
+            }
+        ],
+        "environmentFiles": [
+            {
+                "value": "aws://s3.amazonaws.com/your-batches-s3-bucket/path-to-file",
+                "type": "s3"
+            }
+        ],
+        "dependsOn": [
+            {
+            "containerName": "",
+            "condition": "COMPLETE"
+            }
+        ],
+        "mountPoints": [
+            {
+                "sourceVolume": "/app/data/input",
+                "containerPath": "/app/data/output",
+                "readOnly": false
+            }
+        ],
+        "command": [
+          "uv",
+          "run",
+          "--prerelase=allow",
+          "python",
+          "/app/cb-scrape-framework/app_aplitter.py"
+        ],
+        "logConfiguration": {
+            "logDriver": "splunk",
+            "options": {
+                "KeyName": ""
+            },
+            "secretOptions": [
+                {
+                    "name": "",
+                    "valueFrom": ""
+                }
+            ]
+        }
+      },
+      {
+        "name": "extract-data",
+        "image": "cb-scrape-framework-docker-image",
+        "cpu": 512,
+        "memory": 1024,
+        "portMappings": [],
+        "essential": true,
+        "environment": [
+          {
+            "name": "INPUT_S3_BUCKET",
+            "value": "your-batches-s3-bucket"
+          },
+          {
+            "name": "INPUT_S3_KEY",
+            "value": "" 
+          },
+          {
+            "name": "OUTPUT_S3_BUCKET",
+            "value": "your-processed-s3-bucket"
+          },
+          {
+            "name": "OUTPUT_S3_PREFIX",
+            "value": "processed/"
+          }
+        ],
+        "mountPoints": [],
+        "command": [
+          "python",
+          "/app/processor.py"
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "processor-logs",
+            "awslogs-region": "your-aws-region",
+            "awslogs-stream-prefix": "processor"
+          }
+        }
+      },
+      {
+        "name": "aggregator",
+        "image": "your-aggregator-image",
+        "cpu": 512,
+        "memory": 1024,
+        "portMappings": [],
+        "essential": true,
+        "environment": [
+          {
+            "name": "INPUT_S3_BUCKET",
+            "value": "your-processed-s3-bucket"
+          },
+          {
+            "name": "INPUT_S3_KEY",
+            "value": ""
+          },
+          {
+            "name": "OUTPUT_S3_BUCKET",
+            "value": "your-aggregated-s3-bucket"
+          },
+          {
+            "name": "OUTPUT_S3_PREFIX",
+            "value": "aggregated/"
+          }
+        ],
+        "mountPoints": [
+            {
+            "sourceVolume": "",
+            "containerPath": "",
+            "readOnly": true
+            }
+        ],
+        "command": [
+          "python",
+          "/app/aggregator.py"
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "aggregator-logs",
+            "awslogs-region": "your-aws-region",
+            "awslogs-stream-prefix": "aggregator"
+          }
+        }
+      }
+    ],
+    "volumes": [],
+    "placementConstraints": [],
+    "requiresCompatibilities": [
+      "FARGATE",
+      "EC2"
+    ],
+    "cpu": "512",
+    "memory": "1024",
+    "tags": []
+  }
