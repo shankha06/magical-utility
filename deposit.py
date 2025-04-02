@@ -15,7 +15,7 @@ def recurring_deposit(principal, rate, years):
   return round(amount, 2)
 
 # Ask the user for the input values
-principal = float(input("Enter the principal amount: "))
+principal = float(input("Enter the yearly deposit amount: "))
 rate = float(input("Enter the rate of interest: "))
 years = int(input("Enter the number of years for cover: "))
 premium = int(input("Enter the number of years for premium: "))
