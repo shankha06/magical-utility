@@ -18,30 +18,14 @@ class NullMapping:
     def items(self):
         return iter([])
 
-    # # Method that might be called on a copy (does nothing on the NullMapping itself)
-    # def update(self, other_dict):
-    #     pass
-
     # Method needed for 'key in mapping' check
     def __contains__(self, key):
         return False
 
     # Method needed for mapping[key] access (raises error like a dict)
     def __getitem__(self, key):
-        # This was being called unexpectedly by dict(NULL_MAPPING)
         raise KeyError(key)
 
-    # # Optional but useful dictionary-like methods
-    # def get(self, key, default=None):
-    #     return default
-
-    # def __len__(self):
-    #     return 0
-
-    # def __repr__(self):
-    #     return "NullMapping()"
-
-# Instantiate the singleton Null Object
 NULL_MAPPING = NullMapping()
 
 # --- Original Data Structures ---
