@@ -8,7 +8,7 @@ import random # Keep for evaluate_response simulation if needed
 from datetime import datetime
 
 from ragas import SingleTurnSample
-from ragas.metrics import Faithfulness, LLMContextPrecisionWithReference, ResponseGroundedness
+from ragas.metrics import Faithfulness, LLMContextPrecisionWithReference, ResponseGroundedness, AspectCritic, LLMContextRecall
 from ragas.metrics._factual_correctness import FactualCorrectness
 
 # Configure logging
@@ -29,20 +29,28 @@ async def evaluate_response(reference:List[str], user_query:str, model_response:
 
         # Initialize metrics (consider doing this once outside if evaluation_model is constant)
         faithfulness = Faithfulness(llm=evaluation_model)
-        context_precision = LLMContextPrecisionWithReference(llm=evaluation_model)
+        context_precision = LLMContextRecall(llm=evaluation_model)
         groundedness = ResponseGroundedness(llm=evaluation_model)
         factual_correctness = FactualCorrectness(llm=evaluation_model)
+
+        instruction_critic = AspectCritic(
+            name="instruction_following",
+            definition="Does the response accurately and completely follow all instructions, constraints (like length, format), and requests stated in the user query? Consider negative constraints (e.g., 'don't mention X'), guidelines (e.g., 'Write in 500 words')",
+            llm=evaluation_model
+        )
 
         faithfulness_score = await faithfulness.single_turn_ascore(sample)
         context_precision_score = await context_precision.single_turn_ascore(sample)
         groundedness_score = await groundedness.single_turn_ascore(sample)
         factual_correctness_score = await factual_correctness.single_turn_ascore(sample)
+        instruction_critic_score = await instruction_critic.single_turn_ascore(sample)
 
         return {
             "faithfulness": faithfulness_score,
             "context_precision": context_precision_score,
             "groundedness": groundedness_score,
             "factual_correctness": factual_correctness_score,
+            "instruction_critic": instruction_critic_score
         }
 
 
@@ -51,7 +59,8 @@ async def evaluate_response(reference:List[str], user_query:str, model_response:
         # Return None for all metrics if sample creation fails
         metrics_result = {
            "faithfulness": None, "context_precision": None,
-           "groundedness": None, "factual_correctness": None
+           "groundedness": None, "factual_correctness": None,
+           "instruction_critic": None
         }
 
     return metrics_result
