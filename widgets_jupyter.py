@@ -67,6 +67,32 @@ def choose_continuous_number(callback_function, dropdown_options=None, slider_mi
         slider.observe(on_change, names='value')
         display(slider)
 
+def list_files_in_folder_paginated(bucket_name, folder_prefix):
+    """
+    Lists all files within a specified folder in an AWS S3 bucket using boto3
+    and a paginator to handle a large number of files.
+
+    Args:
+        bucket_name (str): The name of the S3 bucket.
+        folder_prefix (str): The prefix of the folder (e.g., 'myfolder/').
+
+    Returns:
+        list: A list of file keys (names) within the specified folder.
+              Returns an empty list if the folder does not exist or is empty.
+    """
+    s3_client = boto3.client('s3')
+    paginator = s3_client.get_paginator('list_objects_v2')
+    file_list = []
+    try:
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=folder_prefix)
+        for page in pages:
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    file_list.append(obj['Key'])
+    except ClientError as e:
+        print(f"Error listing files in folder '{folder_prefix}': {e}")
+    return file_list
+
 if __name__ == '__main__':
     def process_value(selected_value):
         """
