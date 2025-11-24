@@ -19,4 +19,5 @@ dependencies = [
     "ragas>=0.2.14",
     "scipy>=1.15.2",
     "arize-phoenix>=8.24.2",
+    "python-levenshtein>=0.27.3",
 ]
